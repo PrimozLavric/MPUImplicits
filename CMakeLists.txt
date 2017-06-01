@@ -9,6 +9,9 @@ set(LIB_DIR ${PROJECT_SOURCE_DIR}/libs)
 # GLM
 include_directories(${LIB_DIR}/glm)
 
+# Nanoflann
+include_directories(${LIB_DIR}/Nanoflann)
+
 # Folders considered for compilation
 add_subdirectory(src)
 

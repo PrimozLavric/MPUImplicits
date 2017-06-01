@@ -6,6 +6,7 @@ using namespace std;
 
 template <class T>
 class Volume {
+
 public:
 	Volume(int x, int y, int z);
 	~Volume() {};
@@ -14,13 +15,14 @@ public:
 	void resize(int x, int y, int z);
 
 	// Initializes the volume structure with the given data
-	void init(vector<T> data);
+	void init(vector<T> const &data);
 
 	// Element fetch operator
 	vector<vector<T>>& operator[] (int x) {
 		return this->data[x];
 	}
 
+	vector<int> const dimensions() { return this->dim; }
 private:
 	vector<int> dim = { -1, -1, -1 };
 
@@ -43,7 +45,7 @@ void Volume<T>::resize(int x, int y, int z) {
 }
 
 template <class T>
-void Volume<T>::init(vector<T> values) {
+void Volume<T>::init(vector<T> const &values) {
 	auto iter = values.begin();
 
 	for (int i = 0; i < x; i++) {
