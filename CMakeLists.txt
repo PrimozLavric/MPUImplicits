@@ -12,6 +12,9 @@ include_directories(${LIB_DIR}/glm)
 # Nanoflann
 include_directories(${LIB_DIR}/Nanoflann)
 
+# Eigen
+include_directories(${LIB_DIR}/eigen)
+
 # Folders considered for compilation
 add_subdirectory(src)
 
