@@ -8,6 +8,7 @@
 #include "../implicits/GeneralQuadratic.hpp"
 #include "../implicits/BivariateQuadratic.hpp"
 #include "../implicits/UtilityFunctions.hpp"
+#include <limits>
 
 using namespace std;
 using namespace glm;
@@ -46,19 +47,26 @@ private:
 	int depth;
 
 	// Implicit approximating points in this cell. (Only leafs should have this)
-	Implicit<T> *implicit;
+	Implicit<T> *implicit = NULL;
 
 public:
 	ImplicitCell() {};
 	ImplicitCell(ImplicitOctree<T> *tree, tvec3<T> position, T size, int depth);
-	~ImplicitCell() {};
+	~ImplicitCell() { if (implicit != NULL) delete implicit; };
 
-	tvec3<T> getCenter() { return this->position + (this->size / 2); }
+	inline tvec3<T> getCenter() { return this->position + (this->size / 2); }
 
 	// Subdivides the cell (creating 8 children)
 	void subdivide();
 
+	// Builds the tree and fits the implicits
 	void build();
+
+	// Calculates distance function for the given point
+	tvec2<T> globalFunctionValue(tvec3<T> position);
+
+private:
+	inline T getSupportRadius() { return this->treeRef->params.alpha * 2 * sqrt(3) * this->size; }
 };
 
 //////////////////////////////////////////////////////
@@ -86,7 +94,7 @@ void ImplicitCell<T>::build() {
 	T query_pt[3] = { cellCenter.x, cellCenter.y, cellCenter.z };
 
 	// List of support points
-	int minPoints = this->treeRef->params.minPoints;
+	size_t minPoints = this->treeRef->params.minPoints;
 	vector<Point<T> > supportPoints;
 
 	T origRadius = this->radius;
@@ -133,16 +141,14 @@ void ImplicitCell<T>::build() {
 
 	bool fittingSuccessful;
 	if (isGeneral) {
-		GeneralQuadratic<T> gq = GeneralQuadratic<T>();
-		fittingSuccessful = gq.fitOnPoints(supportPoints, cellCenter, this->size, this->radius, tangentPlane.first);
-		this->implicit = &gq;
-		//cout << "General: " << this->implicit->getApproximationError() << "\tStatus:" << fittingSuccessful << endl;
+		GeneralQuadratic<T> *gq = new GeneralQuadratic<T>();
+		fittingSuccessful = gq->fitOnPoints(supportPoints, cellCenter, this->size, this->radius, tangentPlane.first);
+		this->implicit = gq;
 	}
 	else {
-		BivariateQuadratic<T> bq = BivariateQuadratic<T>();
-		fittingSuccessful = bq.fitOnPoints(supportPoints, cellCenter, this->radius, origRadius, tangentPlane.first, tangentPlane.second);
-		this->implicit = &bq;
-		//cout << "Bivariate: " << this->implicit->getApproximationError() << "\tStatus:" << fittingSuccessful << endl;
+		BivariateQuadratic<T> *bq = new BivariateQuadratic<T>();
+		fittingSuccessful = bq->fitOnPoints(supportPoints, cellCenter, this->radius, origRadius, tangentPlane.first, tangentPlane.second);
+		this->implicit = bq;
 	}
 	
 
@@ -189,6 +195,33 @@ void ImplicitCell<T>::subdivide() {
 	this->isLeaf = false;
 }
 
+template <class T>
+tvec2<T> ImplicitCell<T>::globalFunctionValue(tvec3<T> position) {
+	tvec3<T> cellCenter = this->getCenter();
+	tvec3<T> relPos = position - cellCenter;
+
+	// first (x) - distance functions sum, second (y) - weight sum 
+	tvec2<T> result(0, 0);
+
+	// Check if the point is within the support radius
+	if (sqrt(dot(relPos, relPos) < this->getSupportRadius())) {
+		if (this->isLeaf) {
+			T w = MPUIUtility::weight(position, cellCenter, this->radius);
+
+			result.x += (*this->implicit).funValue(position) * w;
+			result.y += w;
+		}
+		else {
+			// Calculate function value for children and sum up the results
+			for (auto itC = children.begin(); itC != children.end(); itC++) {
+				result += itC->globalFunctionValue(position);
+			}
+		}
+	}
+
+	return result;
+}
+
 //////////////////////////////////////////////////////
 ////////////  DECLARATION ImplicitOctree  ////////////
 //////////////////////////////////////////////////////
@@ -203,11 +236,11 @@ public:
 	struct Parameters {
 		T alpha; // radius = alpha * cellDiag
 		T lambda; // Radius iteration step
-		int minPoints;
+		size_t minPoints;
 		int maxDepth;
 		T maxError;
 
-		Parameters(T alpha, T lambda, int minPoints, int maxDepth, T maxError) : alpha(alpha), lambda(lambda), minPoints(minPoints), maxDepth(maxDepth), maxError(maxError) {};
+		Parameters(T alpha, T lambda, size_t minPoints, int maxDepth, T maxError) : alpha(alpha), lambda(lambda), minPoints(minPoints), maxDepth(maxDepth), maxError(maxError) {};
 	};
 
 	// Pointcloud containing the data
@@ -226,6 +259,8 @@ public:
 	~ImplicitOctree() {};
 
 	void build();
+
+	T globalFunctionValue(tvec3<T> position);
 };
 
 //////////////////////////////////////////////////////
@@ -245,4 +280,17 @@ void ImplicitOctree<T>::build() {
 
 	// Start building sublevels
 	this->root.build();
+}
+
+template <class T>
+T ImplicitOctree<T>::globalFunctionValue(tvec3<T> position) {
+	// first (x) - distance functions sum, second (y) - weight sum 
+	tvec2<T> result = this->root.globalFunctionValue(position);
+
+	if (result.y != 0) {
+		return result.x / result.y;
+	}
+	else {
+		return -numeric_limits<T>::max();
+	}
 }
