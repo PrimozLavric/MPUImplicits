@@ -37,13 +37,13 @@ public:
 	GeneralQuadratic(size_t auxN = 6, T svThresh = 1E-7) : initialized(false), auxN(auxN), svThresh(svThresh) {};
 	~GeneralQuadratic() {};
 
-	bool fitOnPoints(vector<Point<T>> &points, tvec3<T> cellCenter, T cellSize, T radius);
+	bool fitOnPoints(vector<Point<T>> &points, tvec3<T> cellCenter, T cellSize, T radius, tvec3<T> avgPoint);
 
 	inline tvec3<T> gradient(tvec3<T> position);
 
 	inline T funValue(tvec3<T> position);
 
-	inline T getAproximationError() { return this->maxError; }
+	inline T getApproximationError() { return this->maxError; }
 
 private:
 	void calculateError(vector<Point<T>> &points, tvec3<T> cellCenter, T radius);
@@ -54,9 +54,7 @@ private:
 */ ////////////////////////////////////////////
 
 template <class T>
-bool GeneralQuadratic<T>::fitOnPoints(vector<Point<T>> &points, tvec3<T> cellCenter, T cellSize, T radius) {
-	// Calculate average point from the support points
-	tvec3<T> avgPoint = MPUIUtility::positionAverage(points);
+bool GeneralQuadratic<T>::fitOnPoints(vector<Point<T>> &points, tvec3<T> cellCenter, T cellSize, T radius, tvec3<T> avgPoint) {
 
 	// Set up A matrix and b vector for SVD
 	Matrix<T, 10, 10> A;
@@ -165,6 +163,7 @@ bool GeneralQuadratic<T>::fitOnPoints(vector<Point<T>> &points, tvec3<T> cellCen
 		T weight = MPUIUtility::weight(position, cellCenter, radius);
 		totalWeight += weight;
 
+
 		// Point relative to the average point
 		tvec3<T> avgRel = position - avgPoint;
 
@@ -188,6 +187,9 @@ bool GeneralQuadratic<T>::fitOnPoints(vector<Point<T>> &points, tvec3<T> cellCen
 		}
 	}
 
+	if (totalWeight == 0) {
+		cout << "err" << endl;;
+	}
 	// Divide the selected point matrix with total weight
 	selPA /= totalWeight;
 
@@ -211,7 +213,7 @@ bool GeneralQuadratic<T>::fitOnPoints(vector<Point<T>> &points, tvec3<T> cellCen
 	bool validSV = false;
 	
 	for (int i = 0; i < sv.rows(); i++) {
-		if (sv(i, 0) > 1E-12) {
+		if (sv(i) > 1E-12) {
 			validSV = true;
 			break;
 		}
@@ -270,18 +272,19 @@ void GeneralQuadratic<T>::calculateError(vector<Point<T>> &points, tvec3<T> cell
 
 		T l = sqrt(dot(grad, grad));
 		T error;
-			// Compute error for this point
-			if (l != 0) {
-				error = fVal / sqrt(dot(grad, grad));
-			}
-			else {
-				error = fVal;
-			}
 
-			// Keep only the maximal error
-			if (error > this->maxError) {
-				this->maxError = error;
-			}
+		// Compute error for this point
+		if (l != 0) {
+			error = fVal / sqrt(dot(grad, grad));
+		}
+		else {
+			error = fVal;
+		}
+
+		// Keep only the maximal error
+		if (error > this->maxError) {
+			this->maxError = error;
+		}
 	}
 }
 
@@ -303,5 +306,10 @@ T GeneralQuadratic<T>::funValue(tvec3<T> position) {
 		(position.x * c[0] + position.y * c[1] + position.z * c[2] + c[6]) * position.x +
 		(position.x * c[1] + position.y * c[3] + position.z * c[4] + c[7]) * position.y +
 		(position.x * c[2] + position.y * c[4] + position.z * c[5] + c[8]) * position.z;
+
+		/*return  c[9] +
+		(position.x * c[0] + position.y * c[1] + c[6]) * position.x +
+		(position.y * c[3] + position.z * c[4] + c[7]) * position.y +
+		(position.x * c[2] + position.z * c[5] + c[8]) * position.z;*/
 }
 

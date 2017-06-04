@@ -1,14 +1,9 @@
 #include "structures\volume.hpp"
 #include "structures\PointCloud.hpp"
-#include  <iostream>
+#include <iostream>
 #include <fstream>
-#include <nanoflann.hpp>
 #include "structures\ImplicitOctree.hpp"
-#include "implicits\GeneralQuadratic.hpp"
-#include "implicits\BivariateQuadratic.hpp"
-#include <Eigen\Dense>
 
-using namespace Eigen;
 using namespace std;
 using namespace nanoflann;
 
@@ -72,24 +67,12 @@ int main() {
 		}
 	}
 	
-	PointCloud<double> pc;
+	PointCloud<float> pc;
 	pc.setFromVolume(data, 0.0, true);
 
+	ImplicitOctree<float> implicitOctree(pc);
+	implicitOctree.build();
 
-	typedef KDTreeSingleIndexAdaptor<L2_Simple_Adaptor<double, PointCloud<double> >, PointCloud<double>, 3> kdtree;
-
-	kdtree tree(3, pc);
-	tree.buildIndex();
-
-	double query_pt[3] = { 0.5f, 0.5f, 0.5f };
-	double radius = 0.1f;
-
-	std::vector<std::pair<size_t, double>> ret_matches;
-
-	nanoflann::SearchParams params;
-	//params.sorted = false;
-
-	const size_t nMatches = tree.radiusSearch(&query_pt[0], radius, ret_matches, params);
 
 	return 0;
 

@@ -10,5 +10,5 @@ public:
 
 	virtual tvec3<T> gradient(tvec3<T> position) = 0;
 
-	virtual T getAproximationError() = 0;
+	virtual T getApproximationError() = 0;
 };

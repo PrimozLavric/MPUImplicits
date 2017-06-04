@@ -9,9 +9,9 @@ using namespace glm;
 namespace MPUIUtility {
 	template <typename T>
 	inline T weight(tvec3<T> position, tvec3<T> center, T radius) {
-		position -= center;
+		tvec3<T> pc = position - center;
 		// Distance between the point and the center
-		T dist = sqrt(dot(position, position));
+		T dist = sqrt(dot(pc, pc));
 
 		if (dist > radius) {
 			return 0;
@@ -47,24 +47,28 @@ namespace MPUIUtility {
 
 
 	template <typename T>
-	tvec3<T> positionAverage(vector<Point<T> > points) {
-		tvec3<T> avgPoint(0, 0, 0);
+	pair<tvec3<T>, tvec3<T> > findAveragedTangentPlane(vector<Point<T> > points, tvec3<T> cellCenter, T radius) {
+		// First - position, second - normal
+		pair<tvec3<T>, tvec3<T> > tangentP = make_pair(tvec3<T>(0, 0, 0), tvec3<T>(0, 0, 0));
 
-		for (auto it = points.begin(); it != points.end(); it++) {
-			avgPoint += it->position;
+		T weightSum = 0;
+		for (auto itP = points.begin(); itP != points.end(); itP++) {
+			T w = weight(itP->position, cellCenter, radius);
+			weightSum += w;
+
+			tangentP.first += itP->position * w;
+			tangentP.second += itP->normal * w;
 		}
 
-		return avgPoint / ((T) points.size());
-	}
-
-	template <typename T>
-	tvec3<T> normalAverage(vector<Point<T> > points) {
-		tvec3<T> avgNormal(0, 0, 0);
-
-		for (auto it = points.begin(); it != points.end(); it++) {
-			avgNormal += it->normal;
+		tangentP.first /= weightSum;
+		
+		// Normalize the normal
+		if (length(tangentP.second) == 0) {
+			tangentP.second = tvec3<T>(1, 1, 1);
 		}
+		
+		tangentP.second = normalize(tangentP.second);
 
-		return avgNormal / ((T) points.size());
+		return tangentP;
 	}
 }

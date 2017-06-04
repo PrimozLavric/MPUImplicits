@@ -41,7 +41,7 @@ public:
 		const PointT d0 = p1[0] - points[idx_p2].position.x;
 		const PointT d1 = p1[1] - points[idx_p2].position.y;
 		const PointT d2 = p1[2] - points[idx_p2].position.z;
-		return d0*d0 + d1*d1 + d2*d2;
+		return sqrt(d0*d0 + d1*d1 + d2*d2);
 	}
 
 	inline PointT kdtree_get_pt(const size_t idx, int dim) const

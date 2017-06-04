@@ -89,7 +89,7 @@ template <class T>
 glm::tvec3<T> AABB<T>::getCenter() const {
 	if (!this->isNull()) {
 		glm::tvec3<T> d = this->getDiagonal();
-		return minP + (d * 0.5);
+		return this->minP + (d * static_cast<T>(0.5));
 	}
 	else {
 		return glm::tvec3<T>(0.0);

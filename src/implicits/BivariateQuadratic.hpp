@@ -37,13 +37,13 @@ public:
 	BivariateQuadratic(size_t auxN = 6, T svThresh = 1E-5) : initialized(false), auxN(auxN), svThresh(svThresh) {};
 	~BivariateQuadratic() {};
 
-	bool fitOnPoints(vector<Point<T>> &points, tvec3<T> cellCenter, T radius);
+	bool fitOnPoints(vector<Point<T>> &points, tvec3<T> cellCenter, T radius, T errRadius, tvec3<T> avgPoint, tvec3<T> avgNormal);
 
 	inline tvec3<T> gradient(tvec3<T> position);
 
 	inline T funValue(tvec3<T> position);
 
-	inline T getAproximationError() { return this->maxError; }
+	inline T getApproximationError() { return this->maxError; }
 
 private:
 	void calculateError(vector<Point<T>> &points, tvec3<T> cellCenter, T radius);
@@ -54,10 +54,7 @@ private:
 */ ////////////////////////////////////////////
 
 template <class T>
-bool BivariateQuadratic<T>::fitOnPoints(vector<Point<T> > &points, tvec3<T> cellCenter, T radius) {
-	// Calculate average position and normal from the support points
-	tvec3<T> avgPoint = MPUIUtility::positionAverage(points);
-	tvec3<T> avgNormal = MPUIUtility::normalAverage(points);
+bool BivariateQuadratic<T>::fitOnPoints(vector<Point<T> > &points, tvec3<T> cellCenter, T radius, T errRadius, tvec3<T> avgPoint, tvec3<T> avgNormal) {
 
 	// Calculate base for vector space U (u, v, w) where positive w is pointing towards normal
 	tvec3<T> transA;
@@ -86,14 +83,12 @@ bool BivariateQuadratic<T>::fitOnPoints(vector<Point<T> > &points, tvec3<T> cell
 	b.setZero();
 
 	/* /////////////////// PROCESS SELECTED POINTS /////////////////// */
-	T totalWeight = 0;
 
 	for (auto pIt = points.begin(); pIt != points.end(); pIt++) {
 		tvec3<T> position = pIt->position;
 
 		// Calculate the weight for the point
 		T weight = MPUIUtility::weight(position, cellCenter, radius);
-		totalWeight += weight;
 
 		// Point relative to the average point
 		tvec3<T> avgRel = position - avgPoint;
@@ -180,14 +175,10 @@ bool BivariateQuadratic<T>::fitOnPoints(vector<Point<T> > &points, tvec3<T> cell
 		+ this->c[1] * avgPoint.x * avgPoint.y + this->c[4] * avgPoint.y * avgPoint.z + this->c[2] * avgPoint.z * avgPoint.x
 		+ this->c[0] * avgPoint.x * avgPoint.x + this->c[3] * avgPoint.y * avgPoint.y + this->c[5] * avgPoint.z * avgPoint.z;
 
-	for (int i = 0; i < 10; i++) {
-		cout << this->c[i] << endl;
-	}
-
 	this->initialized = true;
 
 	// Calculate the max error of the approximation
-	calculateError(points, cellCenter, radius);
+	calculateError(points, cellCenter, errRadius);
 
 	return true;
 }
@@ -236,6 +227,19 @@ tvec3<T> BivariateQuadratic<T>::gradient(tvec3<T> position) {
 		);
 }
 
+// cxx - c[0]
+// cyy - c[3]
+// czz - c[5]
+
+// cxy - c[1]
+// cyz - c[4]
+// czx - c[2]
+
+// cx - c[6]
+// cy - c[7]
+// cz - c[8]
+
+// c0 - c[9]
 
 template <class T>
 T BivariateQuadratic<T>::funValue(tvec3<T> position) {
@@ -244,5 +248,10 @@ T BivariateQuadratic<T>::funValue(tvec3<T> position) {
 		(position.x * c[0] + position.y * c[1] + position.z * c[2] + c[6]) * position.x +
 		(position.x * c[1] + position.y * c[3] + position.z * c[4] + c[7]) * position.y +
 		(position.x * c[2] + position.y * c[4] + position.z * c[5] + c[8]) * position.z;
+	/*
+	return  c[9] +
+		(position.x * c[0] + position.y * c[1] + c[6]) * position.x +
+		(position.y * c[3] + position.z * c[4] + c[7]) * position.y +
+		(position.x * c[2] + position.z * c[5] + c[8]) * position.z;*/
 }
 
