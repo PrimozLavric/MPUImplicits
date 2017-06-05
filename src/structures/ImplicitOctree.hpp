@@ -255,7 +255,7 @@ public:
 	int maxDepth = 0;
 
 public:
-	ImplicitOctree(PointCloud<T> &pointCloud, Parameters params = Parameters((T) 0.75, (T) 0.1, 15, 10, (T) 0.005));
+	ImplicitOctree(PointCloud<T> &pointCloud, Parameters params = Parameters((T) 0.75, (T) 0.1, 15, 10, (T) 0.01));
 	~ImplicitOctree() {};
 
 	void build();
